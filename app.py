@@ -1,9 +1,8 @@
 import pygame
 from settings import *
 import sys
-import copy
-from player_class import *
-from enemy_class import *
+from player import *
+from enemy import *
 
 pygame.init()
 vec = pygame.math.Vector2
@@ -15,17 +14,17 @@ class App:
         self.clock = pygame.time.Clock()
         self.running = True
         self.state = 'start'
-        self.cell_width = maze_width//28
-        self.cell_height = maze_height//30
+        self.cell_width = maze_width//columns
+        self.cell_height = maze_height//rows
         self.walls = []
         self.coins = []
         self.enemies = []
-        self.e_pos = []
-        self.p_pos = None
+        self.enemy_position = []
+        self.player_position = None
 
         self.load()
 
-        self.player = Player(self, vec(self.p_pos))
+        self.player = Player(self, vec(self.player_position))
         self.make_enemies()
 
 
@@ -33,7 +32,6 @@ class App:
         while self.running:
             if self.state == 'start':
                 self.start_events()
-                self.start_update()
                 self.start_draw()
 
             elif self.state == 'playing':
@@ -43,7 +41,6 @@ class App:
 
             elif self.state == 'endgame':
                 self.endgame_events()
-                self.endgame_update()
                 self.endgame_draw()
             else:
                 self.running = False
@@ -51,14 +48,14 @@ class App:
         pygame.quit()
         sys.exit()
 
-    def draw_text(self, words, screen, pos, size, colour, font_name, centered = False):
+    def draw_text(self, words, screen, position, size, colour, font_name, centered = False):
         font = pygame.font.SysFont(font_name, size)
         text = font.render(words, False, colour)
         text_size = text.get_size()
         if centered:
-            pos[0] = pos[0] - text_size[0]//2
-            pos[1] = pos[1] - text_size[1]//2
-        screen.blit(text, pos)
+            position[0] = position[0] - text_size[0]//2
+            position[1] = position[1] - text_size[1]//2
+        screen.blit(text, position)
 
     def load(self):
 
@@ -66,25 +63,26 @@ class App:
         self.background = pygame.transform.scale(self.background, (maze_width, maze_height))
 
         with open("walls.txt", 'r') as file:
-            for yidx, line in enumerate(file):
-                for xidx, char in enumerate(line):
+            for y_index, line in enumerate(file):
+                for x_index, char in enumerate(line):
                     if char == '1':
-                        self.walls.append(vec(xidx, yidx))
+                        self.walls.append(vec(x_index, y_index))
                     elif char == 'C':
-                        self.coins.append(vec(xidx, yidx))
+                        self.coins.append(vec(x_index, y_index))
                     elif char == 'P':
-                        self.p_pos = [xidx, yidx]
+                        self.player_position = [x_index, y_index]
                     elif char in ['2', '3', '4', '5']:
-                        self.e_pos.append([xidx, yidx])
+                        self.enemy_position.append([x_index, y_index])
                     elif char == 'B':
-                        pygame.draw.rect(self.background, black, (xidx*self.cell_width, yidx*self.cell_height, self.cell_width, self.cell_height))
+                        pygame.draw.rect(self.background, black, (x_index*self.cell_width, y_index*self.cell_height, self.cell_width, self.cell_height))
 
     def make_enemies(self):
-        for index, pos in enumerate(self.e_pos):
-            self.enemies.append(Enemy(self, vec(pos), index))
+        for index, position in enumerate(self.enemy_position):
+            self.enemies.append(Enemy(self, vec(position), index))
                         
 
     def draw_grid(self):
+
         for x in range(width//self.cell_width):
             pygame.draw.line(self.background, grey, (x*self.cell_width, 0), (x*self.cell_width, height))
         for y in range(height//self.cell_height):
@@ -111,9 +109,6 @@ class App:
             if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 self.state = 'playing'
     
-    def start_update(self):
-        pass
-    
     def start_draw(self):
         self.screen.fill(black)
         self.draw_text('PUSH SPACE BAR', self.screen, [width//2, height//2], start_text_size, (170, 130, 60), start_font, centered=True)
@@ -133,13 +128,13 @@ class App:
                 self.running = False
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
-                    self.player.move(vec(-1,0))
+                    self.player.move(vec(-1, 0))
                 if event.key == pygame.K_RIGHT:
-                    self.player.move(vec(1,0))
+                    self.player.move(vec(1, 0))
                 if event.key == pygame.K_DOWN:
-                    self.player.move(vec(0,1))
+                    self.player.move(vec(0, 1))
                 if event.key == pygame.K_UP:
-                    self.player.move(vec(0,-1))
+                    self.player.move(vec(0, -1))
     
     def playing_update(self):
         self.player.update()
@@ -147,21 +142,19 @@ class App:
             enemy.update()
         
         for enemy in self.enemies:
-            if enemy.grid_pos == self.player.grid_pos:
+            if enemy.grid_position == self.player.grid_position:
                 self.hit_player()
     
     def playing_draw(self):
         self.screen.fill(black)
-        self.screen.blit(self.background, (top_bottom_buffer//2, top_bottom_buffer//2))
-        #self.draw_grid()
+        self.screen.blit(self.background, (top_bottom_buffer // 2, top_bottom_buffer // 2))
         self.draw_coins()
         self.draw_text('CURRENT SCORE: {}'.format(self.player.current_score), self.screen, [top_bottom_buffer, 0], 18, white, start_font)
-        self.draw_text('HIGH SCORE: {}'.format(self.player.high_score), self.screen, [width//2+top_bottom_buffer, 0], 18, white, start_font)
+        self.draw_text('HIGH SCORE: {}'.format(self.player.high_score), self.screen, [width // 2+top_bottom_buffer, 0], 18, white, start_font)
         self.player.draw()
         for enemy in self.enemies:
             enemy.draw()
         pygame.display.update()
-        #self.coins.pop()
 
 
     def hit_player(self):
@@ -182,9 +175,6 @@ class App:
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 self.running = False
     
-    def endgame_update(self):
-        pass
-    
     def endgame_draw(self):
         self.screen.fill(black)
         self.draw_text('GAMEOVER', self.screen, [width//2, height//2], start_text_size, (170, 130, 60), start_font, centered=True)
@@ -195,12 +185,12 @@ class App:
 
 
     def hit(self):
-        self.player.grid_pos = vec(self.player.starting_pos)
-        self.player.pix_pos = self.player.get_pix_pos()
+        self.player.grid_position = vec(self.player.starting_position)
+        self.player.pixel_position = self.player.get_pixel_position()
         self.player.direction *= 0
         for enemy in self.enemies:
-            enemy.grid_pos = vec(enemy.starting_pos)
-            enemy.pix_pos = enemy.get_pix_pos()
+            enemy.grid_position = vec(enemy.starting_position)
+            enemy.pixel_position = enemy.get_pixel_position()
             enemy.direction *= 0
 
 
@@ -208,20 +198,20 @@ class App:
         self.player.lives = 3
         self.player.current_score = 0
         self.coins = []
-        self.player.grid_pos = vec(self.player.starting_pos)
-        self.player.pix_pos = self.player.get_pix_pos()
+        self.player.grid_position = vec(self.player.starting_position)
+        self.player.pixel_position = self.player.get_pixel_position()
         self.player.direction *= 0
         for enemy in self.enemies:
-            enemy.grid_pos = vec(enemy.starting_pos)
-            enemy.pix_pos = enemy.get_pix_pos()
+            enemy.grid_position = vec(enemy.starting_position)
+            enemy.pixel_position = enemy.get_pixel_position()
             enemy.direction *= 0
         with open("walls.txt", 'r') as file:
-            for yidx, line in enumerate(file):
-                for xidx, char in enumerate(line):
+            for y_index, line in enumerate(file):
+                for x_index, char in enumerate(line):
                     if char == '1':
-                        self.walls.append(vec(xidx, yidx))
+                        self.walls.append(vec(x_index, y_index))
                     elif char == 'C':
-                        self.coins.append(vec(xidx, yidx))
+                        self.coins.append(vec(x_index, y_index))
         
         self.state = 'playing'
 

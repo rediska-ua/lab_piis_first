@@ -4,6 +4,8 @@ width, height = 610, 670
 top_bottom_buffer = 50
 maze_width, maze_height = width-top_bottom_buffer, height-top_bottom_buffer
 fps = 60
+columns = 28
+rows = 30
 
 coin_radius = 4
 
